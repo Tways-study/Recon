@@ -4,6 +4,7 @@
 import argparse
 import json
 import os
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -19,6 +20,19 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
+
+
+def log_error(tool: str, message: str) -> None:
+    errors_file = TMP_DIR / "errors.json"
+    errors = json.loads(errors_file.read_text()) if errors_file.exists() else []
+    errors.append({
+        "domain": "",
+        "tool": tool,
+        "error": message,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    })
+    errors_file.write_text(json.dumps(errors, indent=2))
+
 
 MASTER_HEADERS = [
     "Domain", "URL", "Hero Text", "Pricing Summary", "# Pricing Tiers",
@@ -205,8 +219,12 @@ def main() -> None:
     parser.add_argument("--sheet-id", help="Existing Google Sheet ID (creates new if omitted)")
     args = parser.parse_args()
 
-    url = export(sheet_id=args.sheet_id)
-    print(f"\nSheet: {url}")
+    try:
+        url = export(sheet_id=args.sheet_id)
+        print(f"\nSheet: {url}")
+    except Exception as e:
+        log_error("export_to_sheets", str(e))
+        raise
 
 
 if __name__ == "__main__":
