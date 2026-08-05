@@ -174,11 +174,15 @@ def scrape(url: str) -> dict:
                         result[section] = {"found": False, "url": nav_url, "error": str(e)}
 
             browser.close()
-    except Exception:
-        resp = requests.get(base_url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-        html = resp.text
-        result["raw_html"] = html
-        result["homepage"] = extract_homepage_data(html, base_url)
+    except Exception as e:
+        log_error(domain, "scrape_competitor", f"Playwright failed, falling back to requests: {e}")
+        try:
+            resp = requests.get(base_url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
+            html = resp.text
+            result["raw_html"] = html
+            result["homepage"] = extract_homepage_data(html, base_url)
+        except Exception as fallback_e:
+            log_error(domain, "scrape_competitor", f"requests fallback also failed: {fallback_e}")
 
     return result
 
