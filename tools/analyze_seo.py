@@ -85,6 +85,8 @@ def check_og_complete(soup: BeautifulSoup) -> bool:
 
 def analyze(domain: str) -> dict:
     scrape_file = SCRAPED_DIR / f"{domain}.json"
+    if not scrape_file.exists():
+        raise FileNotFoundError(f"No scrape data found for {domain}. Run scrape_competitor.py first.")
     scrape_data = json.loads(scrape_file.read_text())
     html = scrape_data.get("raw_html", "")
     soup = BeautifulSoup(html, "lxml")

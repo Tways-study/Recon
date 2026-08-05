@@ -215,6 +215,7 @@ def export(sheet_id: str | None = None) -> str:
 
 
 def main() -> None:
+    TMP_DIR.mkdir(exist_ok=True)
     parser = argparse.ArgumentParser(description="Export competitor research to Google Sheets.")
     parser.add_argument("--sheet-id", help="Existing Google Sheet ID (creates new if omitted)")
     args = parser.parse_args()

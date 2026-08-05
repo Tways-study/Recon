@@ -44,7 +44,7 @@ def format_repo(repo) -> dict:
         "description": repo.description,
         "stars": repo.stargazers_count,
         "language": repo.language,
-        "last_push": repo.pushed_at.isoformat(),
+        "last_push": repo.pushed_at.isoformat() if repo.pushed_at else None,
     }
 
 
