@@ -1,15 +1,22 @@
-# Workflow: Research Competitors
+# Workflow: Scout
 
 ## Objective
-Discover and research competitors for a given keyword or seed URL, then export all findings to Google Sheets.
+Discover and research competitors for a given keyword or seed URL, then export all findings to a self-contained HTML report.
 
 ## Required Inputs
 - At least one of:
   - `--query`: a keyword or product category (e.g. "AI writing tools")
   - `--url`: a known competitor URL to discover peers from (e.g. "https://writesonic.com")
-- `GOOGLE_SHEET_ID` in `.env` (optional — a new sheet will be created if absent)
 
-## Steps
+## Automated Run (recommended)
+
+```bash
+python scout.py --url "https://company.com" [--query "KEYWORD"] [--max-competitors 5] [--export html|markdown|sheets]
+```
+
+Runs the full pipeline end-to-end and exports the report. No manual steps required.
+
+## Manual Steps (step-by-step control)
 
 ### 1. Discover competitors
 ```bash
@@ -30,10 +37,11 @@ python tools/analyze_seo.py --domain "{domain}"
 
 Check `.tmp/errors.json` after each competitor. Surface any failures before continuing to the next.
 
-### 3. Export to Google Sheets
+### 3. Export
 ```bash
-python tools/export_to_sheets.py [--sheet-id "YOUR_SHEET_ID"]
+python tools/export_to_html.py [--output "path/to/report.html"]
 ```
+Output: `.tmp/competitor_analysis.html` (default). Open directly in any browser — no server needed, fully self-contained.
 
 ### 4. Report back
 After export, summarize:
@@ -47,6 +55,6 @@ After export, summarize:
 |-----------|--------|
 | Site blocks Playwright | `scrape_competitor.py` auto-falls back to `requests`; if still failing, log and continue to next competitor |
 | Pricing page not found | `pricing.found = false`; export will show "Not found" |
-| No GitHub presence | `github.found = false`; GitHub columns left blank in Sheet |
+| No GitHub presence | `github.found = false`; GitHub section shows "No GitHub presence found." in report |
 | Rate limited (HTTP 429) | Wait 60 seconds, retry once; if still failing, skip and log |
 | Cookie consent wall | Scraper auto-clicks Accept; if blocked, some data may be missing |

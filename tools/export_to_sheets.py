@@ -194,7 +194,7 @@ def export(sheet_id: str | None = None) -> str:
 
     if not sheet_id:
         result = service.spreadsheets().create(
-            body={"properties": {"title": "Competitor Research"}}
+            body={"properties": {"title": "Scout"}}
         ).execute()
         sheet_id = result["spreadsheetId"]
         print(f"Created new sheet: {sheet_id}")
