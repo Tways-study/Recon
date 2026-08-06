@@ -3,6 +3,7 @@
 
 import argparse
 import json
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
@@ -10,6 +11,7 @@ from urllib.parse import urlparse
 import requests
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
+from duckduckgo_search.exceptions import RatelimitException
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,6 +25,7 @@ NOISE_DOMAINS = {
     "x.com", "facebook.com", "instagram.com", "medium.com",
     "getapp.com", "softwareadvice.com", "alternativeto.net",
     "yelp.com", "glassdoor.com", "crunchbase.com",
+    "bing.com", "google.com", "microsoft.com",
 }
 
 
@@ -49,12 +52,34 @@ def deduplicate(competitors: list[dict]) -> list[dict]:
 
 def parse_seed_url(html: str, url: str) -> str:
     soup = BeautifulSoup(html, "lxml")
+
+    # Page title often has "Company | Category" — the category part is the best query seed
+    title_tag = soup.find("title")
+    if title_tag:
+        title = title_tag.get_text(strip=True)
+        for sep in (" | ", " - ", " – ", " — "):
+            if sep in title:
+                parts = [p.strip() for p in title.split(sep) if p.strip()]
+                # Take the longest part that isn't just the company name (heuristic: >15 chars)
+                descriptive = [p for p in parts if len(p) > 15]
+                if descriptive:
+                    return descriptive[0][:60]
+
+    # Meta description — truncate at the first clause boundary to avoid full sentences
     meta = soup.find("meta", attrs={"name": "description"})
     if meta and meta.get("content"):
-        return meta["content"][:100]
+        desc = meta["content"].strip()
+        for sep in (",", ".", " for ", " that ", " helping ", " to help "):
+            if sep in desc:
+                fragment = desc.split(sep)[0].strip()
+                if len(fragment) > 10:
+                    return fragment[:60]
+        return desc[:60]
+
     h1 = soup.find("h1")
     if h1:
-        return h1.get_text(strip=True)[:100]
+        return h1.get_text(strip=True)[:60]
+
     return extract_domain(url)
 
 
@@ -62,7 +87,7 @@ def build_queries(base_query: str) -> list[str]:
     return [
         base_query,
         f"{base_query} alternatives",
-        f"best {base_query} tools",
+        f"best {base_query}",
     ]
 
 
@@ -102,12 +127,20 @@ def discover(query: str | None = None, url: str | None = None) -> list[dict]:
         seed_url = url if url.startswith("http") else f"https://{url}"
         resp = requests.get(seed_url, timeout=10, headers={"User-Agent": "Mozilla/5.0"})
         resp.raise_for_status()
-        seed_query = parse_seed_url(resp.text, url)
-        base_query = f"{base_query} {seed_query}".strip()
+        # Only extract a query from the seed page when no explicit query was given
+        if not query:
+            seed_query = parse_seed_url(resp.text, url)
+            base_query = seed_query
 
     all_results: list[dict] = []
-    for q in build_queries(base_query):
-        all_results.extend(search_ddg(q))
+    for i, q in enumerate(build_queries(base_query)):
+        if i > 0:
+            time.sleep(2)
+        try:
+            all_results.extend(search_ddg(q))
+        except RatelimitException:
+            print("  DDG rate limited — try again in a few minutes or use a VPN.")
+            break
 
     return deduplicate(all_results)
 
