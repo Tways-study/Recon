@@ -66,6 +66,13 @@ scrape_competitor → detect_tech_stack → fetch_github_presence → analyze_se
 
 Then export with one or more of the export tools. Check `.tmp/errors.json` after each step — errors are appended there and don't raise exceptions to the caller.
 
+## Setup
+
+```bash
+pip install -r requirements.txt
+playwright install chromium   # required for scrape_competitor.py
+```
+
 ## Running Tests
 
 ```bash
@@ -91,6 +98,23 @@ GOOGLE_SHEET_ID=    # Existing sheet ID for export_to_sheets.py; if omitted, a n
 ```
 
 Google OAuth for Sheets (`credentials.json` + `token.json`) is configured separately — see `workflows/export_to_google_sheets.md` for the one-time setup.
+
+## Tool Module Interface
+
+Each tool in `tools/` exposes a callable function that `scout.py` imports directly. These are the stable internal APIs:
+
+| Script | Importable function | Signature |
+|--------|---------------------|-----------|
+| `discover_competitors.py` | `discover(query, url)` | returns `list[dict]` |
+| `scrape_competitor.py` | `scrape(url)` | returns `dict` |
+| `detect_tech_stack.py` | `detect(url)` | returns `dict` |
+| `fetch_github_presence.py` | `fetch(company, domain)` | returns `dict` |
+| `analyze_seo.py` | `analyze(domain)` | returns `dict` |
+| `export_to_html.py` | `export(output?)` | returns output path |
+| `export_to_markdown.py` | `export(output?)` | returns output path |
+| `export_to_sheets.py` | `export(sheet_id?)` | returns Sheet URL |
+
+Non-fatal errors are appended to `.tmp/errors.json` and never raised to the caller — callers must check that file after each step.
 
 ## How to Operate
 
